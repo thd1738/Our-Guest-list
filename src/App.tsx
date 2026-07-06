@@ -13,7 +13,8 @@ import { FamilyListPage } from './components/FamilyListPage';
 import { AddGuestModal } from './components/AddGuestModal';
 import { EditGuestModal } from './components/EditGuestModal';
 import { SplashScreen } from './components/SplashScreen';
-import { Heart, Sparkles } from 'lucide-react';
+import { LoginScreen } from './components/LoginScreen';
+import { Heart, Sparkles, Lock } from 'lucide-react';
 
 const STORAGE_KEY = 'tafadzwa_chengeto_wedding_guests_v1';
 
@@ -35,6 +36,13 @@ export default function App() {
   });
 
   // 2. Navigation & Modal States
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    try {
+      return sessionStorage.getItem('isAuthenticated_tc_2026') === 'true';
+    } catch {
+      return false;
+    }
+  });
   const [showSplash, setShowSplash] = useState<boolean>(() => {
     try {
       return sessionStorage.getItem('hasSeenSplash_v2') !== 'true';
@@ -193,14 +201,41 @@ export default function App() {
               <Sparkles className="w-3.5 h-3.5" />
               <span>✨ Replay Welcome Splash</span>
             </button>
+            <button
+              onClick={() => {
+                try {
+                  sessionStorage.removeItem('isAuthenticated_tc_2026');
+                } catch (e) {}
+                setIsAuthenticated(false);
+              }}
+              className="text-[#2D2D2D]/70 hover:text-rose-600 font-bold flex items-center gap-1 cursor-pointer transition-colors"
+              title="Lock guest directory and return to password screen"
+            >
+              <Lock className="w-3.5 h-3.5" />
+              <span>🔒 Lock Portal</span>
+            </button>
             <p className="opacity-70">Total Guests: {guests.length}</p>
           </div>
         </div>
       </footer>
 
+      {/* Login Screen Portal */}
+      <AnimatePresence>
+        {!isAuthenticated && (
+          <LoginScreen
+            onLoginSuccess={() => {
+              try {
+                sessionStorage.setItem('isAuthenticated_tc_2026', 'true');
+              } catch (e) {}
+              setIsAuthenticated(true);
+            }}
+          />
+        )}
+      </AnimatePresence>
+
       {/* Opening Splash Screen Modal */}
       <AnimatePresence>
-        {showSplash && (
+        {isAuthenticated && showSplash && (
           <SplashScreen
             onDismiss={() => {
               try {
