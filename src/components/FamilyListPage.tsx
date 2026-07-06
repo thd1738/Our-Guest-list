@@ -9,7 +9,7 @@ interface FamilyListPageProps {
   guests: Guest[];
   onNavigateHome: () => void;
   onSwitchSide: (side: GuestSide) => void;
-  onOpenAddModal: (side: GuestSide) => void;
+  onOpenAddModal: (side: GuestSide, defaultCatalog?: string) => void;
   onOpenEditModal: (guest: Guest) => void;
   onDeleteGuest: (id: string, name: string) => void;
   highlightedGuestId?: string | null;
@@ -53,6 +53,29 @@ export const FamilyListPage: React.FC<FamilyListPageProps> = ({
   // Deletion Confirmation & Particle Dissolve State
   const [guestToDelete, setGuestToDelete] = useState<{ id: string; name: string } | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  // Collapsible Catalogs State
+  const [openCatalogs, setOpenCatalogs] = useState<Record<string, boolean>>({});
+  const isCatalogOpen = (catName: string) => openCatalogs[catName] !== false;
+  const toggleCatalog = (catName: string) => {
+    setOpenCatalogs(prev => ({ ...prev, [catName]: !isCatalogOpen(catName) }));
+  };
+
+  // Predefined and dynamic catalog computation
+  const defaultGroomCatalogs = ['Mutoko Guests', 'Harare Guests', 'Family Friends'];
+  const defaultBrideCatalogs = ['Mutoko Guests', 'Village Guests', 'Harare Guests', 'Family Friends'];
+  const baseCatalogs = isGroom ? defaultGroomCatalogs : defaultBrideCatalogs;
+  const customCatalogs: string[] = Array.from(new Set(
+    sideGuests
+      .map(g => g.catalog)
+      .filter((cat): cat is string => Boolean(cat && !baseCatalogs.includes(cat) && cat !== 'General Guests'))
+  ));
+  const uncategorizedGuests = sideGuests.filter(g => !g.catalog || g.catalog === 'General Guests');
+  const allCatalogs: string[] = [
+    ...baseCatalogs,
+    ...customCatalogs,
+    ...(uncategorizedGuests.length > 0 && !baseCatalogs.includes('General Guests') ? ['General Guests'] : [])
+  ];
 
   const handleConfirmDelete = () => {
     if (!guestToDelete) return;
@@ -260,17 +283,17 @@ export const FamilyListPage: React.FC<FamilyListPageProps> = ({
         </div>
       </motion.div>
 
-      {/* Guest List Cards Section */}
+      {/* Guest List Catalogs (Grouped Sections) */}
       <div className="bg-transparent rounded-2xl mb-8">
-        <div className="flex items-center justify-between pb-4 mb-4 border-b border-[#D4AF37]/30 px-2">
+        <div className="flex items-center justify-between pb-4 mb-6 border-b border-[#D4AF37]/30 px-2">
           <div className="flex items-center gap-2">
             <Heart className={`w-4 h-4 ${isGroom ? 'gold-text' : 'text-[#F472B6] animate-pulse'}`} />
             <h3 className="text-sm uppercase tracking-widest font-bold text-[#2D2D2D]">
-              Confirmed Attendees Directory ({sideGuests.length})
+              {isGroom ? "Groom's" : "Bride's"} Guest Catalogs ({sideGuests.length} Total Attendees)
             </h3>
           </div>
           <span className="text-[10px] uppercase tracking-wider text-[#2D2D2D]/50 font-medium">
-            ✨ Click any card to edit
+            ✨ Click catalog header to collapse / expand
           </span>
         </div>
 
@@ -293,113 +316,216 @@ export const FamilyListPage: React.FC<FamilyListPageProps> = ({
             </button>
           </div>
         ) : (
-          <div className="space-y-3">
-            <AnimatePresence mode="popLayout">
-              {sideGuests.map((guest, index) => {
-                const isHighlighted = guest.id === highlightedGuestId;
-                const isDeleting = guest.id === deletingId;
+          <div className="space-y-6">
+            {allCatalogs.map((catalogName) => {
+              const catalogGuests = sideGuests.filter(
+                g => (g.catalog || 'General Guests') === catalogName
+              );
 
-                return (
-                  <motion.div
-                    layout
-                    initial={{ opacity: 0, x: -30, scale: 0.95 }}
-                    animate={isDeleting ? {
-                      opacity: 0,
-                      scale: 0.1,
-                      rotate: 15,
-                      filter: 'blur(8px)',
-                    } : {
-                      opacity: 1,
-                      x: 0,
-                      scale: 1,
-                      rotate: 0,
-                      filter: 'blur(0px)',
-                    }}
-                    exit={{ opacity: 0, scale: 0.8, filter: 'blur(10px)', transition: { duration: 0.3 } }}
-                    transition={{ delay: index * 0.04, duration: 0.3, type: 'spring', stiffness: 300, damping: 25 }}
-                    key={guest.id}
-                    ref={isHighlighted ? highlightedRef : null}
-                    onClick={() => onOpenEditModal(guest)}
-                    className={`group relative px-6 py-5 rounded-2xl transition-all flex items-center justify-between gap-4 cursor-pointer shadow-sm hover:shadow-lg border ${
-                      isHighlighted
-                        ? 'bg-[#FFFDF7] ring-2 ring-[#D4AF37] animate-pulse border-[#D4AF37]'
-                        : isGroom
-                        ? 'bg-white/95 hover:bg-white border-[#D4AF37]/30 hover:border-[#D4AF37]'
-                        : 'bg-white/95 hover:bg-[#FFF9FB] border-[#F472B6]/30 hover:border-[#F472B6]'
-                    } hover:-translate-y-0.5`}
-                    title="Tap card to edit guest name"
+              return (
+                <div 
+                  key={catalogName}
+                  className={`rounded-3xl border overflow-hidden shadow-sm transition-all ${
+                    isGroom 
+                      ? 'bg-white/95 border-[#D4AF37]/40 hover:border-[#D4AF37]' 
+                      : 'bg-white/95 border-[#F472B6]/40 hover:border-[#F472B6]'
+                  }`}
+                >
+                  {/* Catalog Header Bar */}
+                  <div 
+                    onClick={() => toggleCatalog(catalogName)}
+                    className={`px-6 py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer select-none transition-colors ${
+                      isGroom 
+                        ? 'bg-gradient-to-r from-[#FFFDF7] via-white to-[#F9F6F0] hover:bg-[#F4F1EA]' 
+                        : 'bg-gradient-to-r from-[#FFF9FB] via-white to-[#FFF0F5] hover:bg-[#FFE4E1]/40'
+                    }`}
                   >
-                    {/* Dissolve Sparkle Particles when deleting */}
-                    {isDeleting && (
-                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                        {Array.from({ length: 12 }).map((_, i) => (
-                          <motion.span
-                            key={i}
-                            initial={{ scale: 0, x: 0, y: 0 }}
-                            animate={{
-                              scale: [1, 0],
-                              x: (Math.random() - 0.5) * 200,
-                              y: (Math.random() - 0.5) * 200,
-                              opacity: [1, 0]
-                            }}
-                            transition={{ duration: 0.4, ease: 'easeOut' }}
-                            className="absolute w-2 h-2 rounded-full bg-[#D4AF37] shadow-[0_0_8px_#D4AF37]"
-                          />
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Guest Name and Index */}
-                    <div className="flex items-center gap-4 min-w-0 flex-1">
-                      <span className={`w-9 h-9 rounded-full font-bold flex items-center justify-center text-xs shrink-0 transition-all serif italic border ${
-                        isGroom 
-                          ? 'bg-[#F9F6F0] group-hover:bg-[#2D2D2D] group-hover:text-white text-[#2D2D2D] border-[#D4AF37]/40' 
-                          : 'bg-[#FFF0F5] group-hover:bg-[#F472B6] group-hover:text-white text-[#2D2D2D] border-[#F472B6]/40'
+                    <div className="flex items-center gap-3.5">
+                      <div className={`w-11 h-11 rounded-2xl flex items-center justify-center text-xl shadow-2xs border shrink-0 ${
+                        isGroom ? 'bg-white border-[#D4AF37]/50 text-[#D4AF37]' : 'bg-white border-[#F472B6]/50 text-[#F472B6]'
                       }`}>
-                        {index + 1}
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-3">
-                          <h4 className={`text-base sm:text-lg font-bold text-[#2D2D2D] truncate transition-colors ${
-                            isGroom ? 'group-hover:gold-text' : 'group-hover:text-[#F472B6]'
+                        📍
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="text-lg sm:text-xl font-serif font-extrabold text-[#2D2D2D] tracking-tight">
+                            {catalogName}
+                          </h3>
+                          <span className={`text-xs font-sans font-bold px-2.5 py-0.5 rounded-full border shadow-2xs ${
+                            isGroom 
+                              ? 'bg-[#F9F6F0] text-[#D4AF37] border-[#D4AF37]/40' 
+                              : 'bg-[#FFF0F5] text-[#F472B6] border-[#F472B6]/40'
                           }`}>
-                            {guest.name}
-                          </h4>
-                          <span className="opacity-0 group-hover:opacity-100 text-[10px] uppercase tracking-widest px-2.5 py-0.5 rounded-full bg-white border gold-border text-[#2D2D2D] flex items-center gap-1 transition-opacity shrink-0 shadow-2xs">
-                            <Edit3 className="w-3 h-3 gold-text" />
-                            <span>Edit</span>
+                            {catalogGuests.length} {catalogGuests.length === 1 ? 'person' : 'people'}
                           </span>
                         </div>
-                        <p className="text-xs serif italic opacity-60 text-[#2D2D2D] mt-0.5">
-                          {isGroom ? '👨 Tafadzwa Family Side' : '👰 Chengeto Family Side'}
+                        <p className="text-xs text-[#2D2D2D]/60 mt-0.5 font-medium">
+                          {catalogGuests.length === 0 ? 'No guests listed in this group yet' : `Click header to ${isCatalogOpen(catalogName) ? 'collapse' : 'expand'} list`}
                         </p>
                       </div>
                     </div>
 
-                    {/* Editorial Action Buttons */}
-                    <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-0 border-gray-100">
                       <button
-                        onClick={() => onOpenEditModal(guest)}
-                        className="px-3.5 py-2 text-gray-500 hover:text-[#2D2D2D] transition-colors text-[10px] uppercase tracking-widest font-bold flex items-center gap-1 rounded-full hover:bg-gray-100 border border-transparent hover:border-gray-200"
-                        title="Edit guest"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onOpenAddModal(side, catalogName);
+                        }}
+                        className={`px-3.5 py-2 rounded-full text-[10px] uppercase tracking-widest font-bold border transition-all flex items-center gap-1.5 shadow-2xs cursor-pointer ${
+                          isGroom
+                            ? 'bg-[#2D2D2D] hover:bg-black text-white border-[#D4AF37]/50'
+                            : 'bg-[#F472B6] hover:bg-rose-600 text-white border-white'
+                        }`}
+                        title={`Add guest directly to ${catalogName}`}
                       >
-                        <Edit3 className="w-3.5 h-3.5" />
-                        <span className="hidden sm:inline">Edit</span>
+                        <span>➕ Add Here</span>
                       </button>
 
-                      <button
-                        onClick={() => setGuestToDelete({ id: guest.id, name: guest.name })}
-                        className="px-3.5 py-2 text-red-500 hover:text-white hover:bg-red-500 text-[10px] sm:text-xs uppercase tracking-widest font-bold rounded-full border border-red-200 hover:border-red-500 transition-all flex items-center gap-1 cursor-pointer shadow-2xs"
-                        title="Delete guest"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        <span>Delete</span>
-                      </button>
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center border transition-transform duration-300 text-xs font-bold ${
+                        isCatalogOpen(catalogName) ? 'rotate-180' : 'rotate-0'
+                      } ${
+                        isGroom ? 'bg-[#F9F6F0] border-[#D4AF37]/30 text-[#2D2D2D]' : 'bg-[#FFF0F5] border-[#F472B6]/30 text-[#2D2D2D]'
+                      }`}>
+                        ▼
+                      </div>
                     </div>
-                  </motion.div>
-                );
-              })}
-            </AnimatePresence>
+                  </div>
+
+                  {/* Collapsible Guest Cards List with Smooth Slide-Down */}
+                  <AnimatePresence initial={false}>
+                    {isCatalogOpen(catalogName) && (
+                      <motion.div
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.35, ease: 'easeInOut' }}
+                        className="overflow-hidden border-t border-gray-100"
+                      >
+                        <div className="p-4 sm:p-6 space-y-3 bg-[#FDFCFB]/50">
+                          {catalogGuests.length === 0 ? (
+                            <div className="text-center py-8 border-2 border-dashed border-gray-200 rounded-2xl bg-white/60">
+                              <p className="text-xs uppercase tracking-widest text-gray-400 font-bold mb-2.5">No attendees listed under {catalogName}</p>
+                              <button
+                                onClick={() => onOpenAddModal(side, catalogName)}
+                                className={`text-xs font-bold uppercase tracking-wider underline transition-colors cursor-pointer ${
+                                  isGroom ? 'gold-text hover:text-black' : 'text-[#F472B6] hover:text-black'
+                                }`}
+                              >
+                                + Add first person to {catalogName}
+                              </button>
+                            </div>
+                          ) : (
+                            <AnimatePresence mode="popLayout">
+                              {catalogGuests.map((guest, index) => {
+                                const isHighlighted = guest.id === highlightedGuestId;
+                                const isDeleting = guest.id === deletingId;
+
+                                return (
+                                  <motion.div
+                                    layout
+                                    initial={{ opacity: 0, x: -20, scale: 0.95 }}
+                                    animate={isDeleting ? {
+                                      opacity: 0,
+                                      scale: 0.1,
+                                      rotate: 15,
+                                      filter: 'blur(8px)',
+                                    } : {
+                                      opacity: 1,
+                                      x: 0,
+                                      scale: 1,
+                                      rotate: 0,
+                                      filter: 'blur(0px)',
+                                    }}
+                                    exit={{ opacity: 0, scale: 0.8, filter: 'blur(10px)', transition: { duration: 0.3 } }}
+                                    transition={{ delay: index * 0.03, duration: 0.3, type: 'spring', stiffness: 300, damping: 25 }}
+                                    key={guest.id}
+                                    ref={isHighlighted ? highlightedRef : null}
+                                    onClick={() => onOpenEditModal(guest)}
+                                    className={`group relative px-5 py-4 rounded-2xl transition-all flex items-center justify-between gap-4 cursor-pointer shadow-2xs hover:shadow-md border ${
+                                      isHighlighted
+                                        ? 'bg-[#FFFDF7] ring-2 ring-[#D4AF37] animate-pulse border-[#D4AF37]'
+                                        : isGroom
+                                        ? 'bg-white hover:bg-[#FFFDF7] border-[#D4AF37]/30 hover:border-[#D4AF37]'
+                                        : 'bg-white hover:bg-[#FFF9FB] border-[#F472B6]/30 hover:border-[#F472B6]'
+                                    } hover:-translate-y-0.5`}
+                                    title="Tap card to edit guest name"
+                                  >
+                                    {/* Dissolve Sparkle Particles when deleting */}
+                                    {isDeleting && (
+                                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                                        {Array.from({ length: 12 }).map((_, i) => (
+                                          <motion.span
+                                            key={i}
+                                            initial={{ scale: 0, x: 0, y: 0 }}
+                                            animate={{
+                                              scale: [1, 0],
+                                              x: (Math.random() - 0.5) * 200,
+                                              y: (Math.random() - 0.5) * 200,
+                                              opacity: [1, 0]
+                                            }}
+                                            transition={{ duration: 0.4, ease: 'easeOut' }}
+                                            className="absolute w-2 h-2 rounded-full bg-[#D4AF37] shadow-[0_0_8px_#D4AF37]"
+                                          />
+                                        ))}
+                                      </div>
+                                    )}
+
+                                    {/* Guest Name and Index inside catalog */}
+                                    <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                                      <span className={`w-8 h-8 rounded-full font-bold flex items-center justify-center text-xs shrink-0 transition-all serif italic border ${
+                                        isGroom 
+                                          ? 'bg-[#F9F6F0] group-hover:bg-[#2D2D2D] group-hover:text-white text-[#2D2D2D] border-[#D4AF37]/40' 
+                                          : 'bg-[#FFF0F5] group-hover:bg-[#F472B6] group-hover:text-white text-[#2D2D2D] border-[#F472B6]/40'
+                                      }`}>
+                                        {index + 1}
+                                      </span>
+                                      <div className="min-w-0 flex-1">
+                                        <div className="flex items-center gap-2.5">
+                                          <h4 className={`text-sm sm:text-base font-bold text-[#2D2D2D] truncate transition-colors ${
+                                            isGroom ? 'group-hover:gold-text' : 'group-hover:text-[#F472B6]'
+                                          }`}>
+                                            {guest.name}
+                                          </h4>
+                                          <span className="opacity-0 group-hover:opacity-100 text-[9px] uppercase tracking-widest px-2 py-0.5 rounded-full bg-white border gold-border text-[#2D2D2D] flex items-center gap-1 transition-opacity shrink-0 shadow-2xs">
+                                            <Edit3 className="w-2.5 h-2.5 gold-text" />
+                                            <span>Edit</span>
+                                          </span>
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    {/* Editorial Action Buttons */}
+                                    <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                                      <button
+                                        onClick={() => onOpenEditModal(guest)}
+                                        className="px-3 py-1.5 text-gray-500 hover:text-[#2D2D2D] transition-colors text-[10px] uppercase tracking-widest font-bold flex items-center gap-1 rounded-full hover:bg-gray-100 border border-transparent hover:border-gray-200"
+                                        title="Edit guest"
+                                      >
+                                        <Edit3 className="w-3.5 h-3.5" />
+                                        <span className="hidden md:inline">Edit</span>
+                                      </button>
+
+                                      <button
+                                        onClick={() => setGuestToDelete({ id: guest.id, name: guest.name })}
+                                        className="px-3 py-1.5 text-red-500 hover:text-white hover:bg-red-500 text-[10px] uppercase tracking-widest font-bold rounded-full border border-red-200 hover:border-red-500 transition-all flex items-center gap-1 cursor-pointer shadow-2xs"
+                                        title="Delete guest"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                        <span>Delete</span>
+                                      </button>
+                                    </div>
+                                  </motion.div>
+                                );
+                              })}
+                            </AnimatePresence>
+                          )}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              );
+            })}
           </div>
         )}
       </div>

@@ -7,8 +7,9 @@ import { getSidePhoto } from '../utils';
 interface AddGuestModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAddGuest: (name: string, side: GuestSide) => void;
+  onAddGuest: (name: string, side: GuestSide, catalog?: string) => void;
   initialSide?: GuestSide;
+  initialCatalog?: string;
 }
 
 export const AddGuestModal: React.FC<AddGuestModalProps> = ({
@@ -16,27 +17,40 @@ export const AddGuestModal: React.FC<AddGuestModalProps> = ({
   onClose,
   onAddGuest,
   initialSide = 'groom',
+  initialCatalog,
 }) => {
   const [name, setName] = useState('');
   const [side, setSide] = useState<GuestSide>(initialSide);
+  const [catalog, setCatalog] = useState<string>(initialCatalog || (initialSide === 'groom' ? 'Mutoko Guests' : 'Village Guests'));
+  const [isCustomCatalog, setIsCustomCatalog] = useState<boolean>(false);
+  const [customCatalogName, setCustomCatalogName] = useState<string>('');
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isOpen) {
       setSide(initialSide);
       setName('');
+      if (initialCatalog) {
+        setCatalog(initialCatalog);
+        setIsCustomCatalog(false);
+      } else {
+        setCatalog(initialSide === 'groom' ? 'Mutoko Guests' : 'Village Guests');
+        setIsCustomCatalog(false);
+      }
+      setCustomCatalogName('');
       // Auto-focus input after modal transition
       const timer = setTimeout(() => {
         if (inputRef.current) inputRef.current.focus();
       }, 50);
       return () => clearTimeout(timer);
     }
-  }, [isOpen, initialSide]);
+  }, [isOpen, initialSide, initialCatalog]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (name.trim() === '') return;
-    onAddGuest(name.trim(), side);
+    const finalCatalog = isCustomCatalog && customCatalogName.trim() ? customCatalogName.trim() : catalog;
+    onAddGuest(name.trim(), side, finalCatalog);
     onClose();
   };
 
@@ -104,7 +118,10 @@ export const AddGuestModal: React.FC<AddGuestModalProps> = ({
             <div className="grid grid-cols-2 gap-4">
               <button
                 type="button"
-                onClick={() => setSide('groom')}
+                onClick={() => {
+                  setSide('groom');
+                  if (!initialCatalog) setCatalog('Mutoko Guests');
+                }}
                 className={`flex flex-col items-center justify-center p-4 rounded-xl border transition-all cursor-pointer ${
                   side === 'groom'
                     ? 'sage-bg border-[#2D2D2D] shadow-xs scale-[1.02]'
@@ -120,7 +137,10 @@ export const AddGuestModal: React.FC<AddGuestModalProps> = ({
 
               <button
                 type="button"
-                onClick={() => setSide('bride')}
+                onClick={() => {
+                  setSide('bride');
+                  if (!initialCatalog) setCatalog('Village Guests');
+                }}
                 className={`flex flex-col items-center justify-center p-4 rounded-xl border transition-all cursor-pointer ${
                   side === 'bride'
                     ? 'cream-bg-alt border-[#2D2D2D] shadow-xs scale-[1.02]'
@@ -134,6 +154,64 @@ export const AddGuestModal: React.FC<AddGuestModalProps> = ({
                 <span className="text-[10px] uppercase tracking-wider opacity-60 text-[#2D2D2D] mt-0.5">Chengeto's Family</span>
               </button>
             </div>
+          </div>
+
+          {/* Catalog Group Selector */}
+          <div>
+            <label className="block text-xs uppercase tracking-widest font-bold text-[#2D2D2D] mb-2">
+              Assign to Guest Catalog / Section <span className="text-rose-500">*</span>
+            </label>
+            <div className="grid grid-cols-2 sm:grid-cols-2 gap-2.5 mb-3">
+              {(side === 'groom' 
+                ? ['Mutoko Guests', 'Harare Guests', 'Family Friends', 'General Guests'] 
+                : ['Mutoko Guests', 'Village Guests', 'Harare Guests', 'Family Friends']
+              ).map((catName) => (
+                <button
+                  key={catName}
+                  type="button"
+                  onClick={() => {
+                    setCatalog(catName);
+                    setIsCustomCatalog(false);
+                  }}
+                  className={`py-2.5 px-3 rounded-xl text-xs font-bold transition-all border cursor-pointer flex items-center justify-center gap-1.5 ${
+                    !isCustomCatalog && catalog === catName
+                      ? 'bg-[#2D2D2D] text-white border-[#D4AF37] shadow-sm scale-[1.02]'
+                      : 'bg-[#F9F6F0] hover:bg-white text-[#2D2D2D] border-transparent hover:border-[#D4AF37]/50'
+                  }`}
+                >
+                  <span>📍</span>
+                  <span className="truncate">{catName}</span>
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => setIsCustomCatalog(true)}
+                className={`col-span-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all border cursor-pointer flex items-center justify-center gap-1.5 ${
+                  isCustomCatalog
+                    ? 'bg-[#2D2D2D] text-white border-[#D4AF37] shadow-sm scale-[1.02]'
+                    : 'bg-[#F9F6F0] hover:bg-white text-[#2D2D2D] border-transparent hover:border-[#D4AF37]/50'
+                }`}
+              >
+                <span>✏️ Custom Catalog Name</span>
+              </button>
+            </div>
+
+            {isCustomCatalog && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                className="pt-1"
+              >
+                <input
+                  type="text"
+                  value={customCatalogName}
+                  onChange={(e) => setCustomCatalogName(e.target.value)}
+                  placeholder="ENTER CUSTOM CATALOG (E.G. BULAWAYO GUESTS)"
+                  className="w-full px-4 py-3 text-xs bg-[#FDFCFB] border-2 border-[#D4AF37] rounded-xl focus:bg-white focus:outline-none text-[#2D2D2D] placeholder-gray-400 font-bold uppercase tracking-wider shadow-inner"
+                  autoFocus
+                />
+              </motion.div>
+            )}
           </div>
 
             {/* Action Buttons */}

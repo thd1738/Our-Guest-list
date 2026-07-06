@@ -8,7 +8,7 @@ interface EditGuestModalProps {
   guest: Guest | null;
   isOpen: boolean;
   onClose: () => void;
-  onUpdateGuest: (id: string, newName: string, newSide: GuestSide) => void;
+  onUpdateGuest: (id: string, newName: string, newSide: GuestSide, newCatalog?: string) => void;
 }
 
 export const EditGuestModal: React.FC<EditGuestModalProps> = ({
@@ -19,12 +19,18 @@ export const EditGuestModal: React.FC<EditGuestModalProps> = ({
 }) => {
   const [name, setName] = useState('');
   const [side, setSide] = useState<GuestSide>('groom');
+  const [catalog, setCatalog] = useState<string>('Mutoko Guests');
+  const [isCustomCatalog, setIsCustomCatalog] = useState<boolean>(false);
+  const [customCatalogName, setCustomCatalogName] = useState<string>('');
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (guest && isOpen) {
       setName(guest.name);
       setSide(guest.side);
+      setCatalog(guest.catalog || (guest.side === 'groom' ? 'Mutoko Guests' : 'Village Guests'));
+      setIsCustomCatalog(false);
+      setCustomCatalogName('');
       const timer = setTimeout(() => {
         if (inputRef.current) inputRef.current.focus();
       }, 50);
@@ -35,7 +41,8 @@ export const EditGuestModal: React.FC<EditGuestModalProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!guest || name.trim() === '') return;
-    onUpdateGuest(guest.id, name.trim(), side);
+    const finalCatalog = isCustomCatalog && customCatalogName.trim() ? customCatalogName.trim() : catalog;
+    onUpdateGuest(guest.id, name.trim(), side, finalCatalog);
     onClose();
   };
 
@@ -133,6 +140,64 @@ export const EditGuestModal: React.FC<EditGuestModalProps> = ({
                 <span className="text-[10px] uppercase tracking-wider opacity-60 text-[#2D2D2D] mt-0.5">Chengeto's Family</span>
               </motion.button>
             </div>
+          </div>
+
+          {/* Catalog Group Selector */}
+          <div>
+            <label className="block text-xs uppercase tracking-widest font-bold text-[#2D2D2D] mb-2">
+              Assign to Guest Catalog / Section <span className="text-rose-500">*</span>
+            </label>
+            <div className="grid grid-cols-2 sm:grid-cols-2 gap-2.5 mb-3">
+              {(side === 'groom' 
+                ? ['Mutoko Guests', 'Harare Guests', 'Family Friends', 'General Guests'] 
+                : ['Mutoko Guests', 'Village Guests', 'Harare Guests', 'Family Friends']
+              ).map((catName) => (
+                <button
+                  key={catName}
+                  type="button"
+                  onClick={() => {
+                    setCatalog(catName);
+                    setIsCustomCatalog(false);
+                  }}
+                  className={`py-2.5 px-3 rounded-xl text-xs font-bold transition-all border cursor-pointer flex items-center justify-center gap-1.5 ${
+                    !isCustomCatalog && catalog === catName
+                      ? 'bg-[#2D2D2D] text-white border-[#D4AF37] shadow-sm scale-[1.02]'
+                      : 'bg-[#F9F6F0] hover:bg-white text-[#2D2D2D] border-transparent hover:border-[#D4AF37]/50'
+                  }`}
+                >
+                  <span>📍</span>
+                  <span className="truncate">{catName}</span>
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => setIsCustomCatalog(true)}
+                className={`col-span-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all border cursor-pointer flex items-center justify-center gap-1.5 ${
+                  isCustomCatalog
+                    ? 'bg-[#2D2D2D] text-white border-[#D4AF37] shadow-sm scale-[1.02]'
+                    : 'bg-[#F9F6F0] hover:bg-white text-[#2D2D2D] border-transparent hover:border-[#D4AF37]/50'
+                }`}
+              >
+                <span>✏️ Custom Catalog Name</span>
+              </button>
+            </div>
+
+            {isCustomCatalog && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                className="pt-1"
+              >
+                <input
+                  type="text"
+                  value={customCatalogName}
+                  onChange={(e) => setCustomCatalogName(e.target.value)}
+                  placeholder="ENTER CUSTOM CATALOG (E.G. BULAWAYO GUESTS)"
+                  className="w-full px-4 py-3 text-xs bg-[#FDFCFB] border-2 border-[#D4AF37] rounded-xl focus:bg-white focus:outline-none text-[#2D2D2D] placeholder-gray-400 font-bold uppercase tracking-wider shadow-inner"
+                  autoFocus
+                />
+              </motion.div>
+            )}
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3 pt-6 border-t gold-border">

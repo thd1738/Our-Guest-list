@@ -46,6 +46,7 @@ export default function App() {
   const [highlightedGuestId, setHighlightedGuestId] = useState<string | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [addModalDefaultSide, setAddModalDefaultSide] = useState<GuestSide>('groom');
+  const [addModalDefaultCatalog, setAddModalDefaultCatalog] = useState<string | undefined>(undefined);
   const [editingGuest, setEditingGuest] = useState<Guest | null>(null);
   const [notification, setNotification] = useState<string | null>(null);
 
@@ -68,11 +69,12 @@ export default function App() {
   };
 
   // Add Guest Handler
-  const handleAddGuest = (name: string, side: GuestSide) => {
+  const handleAddGuest = (name: string, side: GuestSide, catalog?: string) => {
     const newGuest: Guest = {
       id: Date.now().toString() + Math.random().toString(36).substring(2, 6),
       name,
       side,
+      catalog: catalog || (side === 'groom' ? 'Mutoko Guests' : 'Village Guests'),
       createdAt: Date.now(),
     };
     setGuests(prev => [newGuest, ...prev]);
@@ -86,10 +88,15 @@ export default function App() {
   };
 
   // Update Guest Handler
-  const handleUpdateGuest = (id: string, newName: string, newSide: GuestSide) => {
+  const handleUpdateGuest = (id: string, newName: string, newSide: GuestSide, newCatalog?: string) => {
     setGuests(prev => prev.map(g => {
       if (g.id === id) {
-        return { ...g, name: newName, side: newSide };
+        return { 
+          ...g, 
+          name: newName, 
+          side: newSide,
+          catalog: newCatalog || g.catalog || (newSide === 'groom' ? 'Mutoko Guests' : 'Village Guests')
+        };
       }
       return g;
     }));
@@ -117,7 +124,7 @@ export default function App() {
   };
 
   // Open Add Modal Helper
-  const handleOpenAddModal = (defaultSide?: GuestSide) => {
+  const handleOpenAddModal = (defaultSide?: GuestSide, defaultCatalog?: string) => {
     if (defaultSide) {
       setAddModalDefaultSide(defaultSide);
     } else if (currentView === 'groom' || currentView === 'bride') {
@@ -125,6 +132,7 @@ export default function App() {
     } else {
       setAddModalDefaultSide('groom');
     }
+    setAddModalDefaultCatalog(defaultCatalog);
     setIsAddModalOpen(true);
   };
 
@@ -210,6 +218,7 @@ export default function App() {
         onClose={() => setIsAddModalOpen(false)}
         onAddGuest={handleAddGuest}
         initialSide={addModalDefaultSide}
+        initialCatalog={addModalDefaultCatalog}
       />
 
       {/* Edit Guest Modal */}
