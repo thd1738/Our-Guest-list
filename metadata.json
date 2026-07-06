@@ -1,0 +1,6 @@
+{
+  "name": "Tafadzwa & Chengeto Wedding Guest List",
+  "description": "Simple and elegant wedding guest list management for Tafadzwa (Groom) and Chengeto (Bride).",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
